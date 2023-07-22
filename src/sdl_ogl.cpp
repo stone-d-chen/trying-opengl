@@ -101,12 +101,18 @@ int main(int ArgC, char **Args)
         return(1);
     }
 
-    float positions[6] = 
+    float positions[8] = 
     {
         -0.5f, -0.5f,
-         0.0f,  0.5f,
-         0.5f, -0.5f
+         0.5f,  -0.5f,
+         0.5f, 0.5f,
+        -0.5f, 0.5f,
     }; 
+
+    u32 indices[] = {
+        0, 1, 2,
+        2, 3, 0
+    };
 
     /*
     Modern OpenGL requires a VAO be defined and bound if you are using the core profile.
@@ -115,14 +121,19 @@ int main(int ArgC, char **Args)
     
     */
 
-    unsigned int VAO;
+    u32 VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
 
     u32 BufferId;
     glGenBuffers(1, &BufferId);
     glBindBuffer(GL_ARRAY_BUFFER, BufferId);
-    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), positions, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), positions, GL_STATIC_DRAW);
+
+    u32 IBO;
+    glGenBuffers(1, &IBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(u32), indices, GL_STATIC_DRAW);
 
 
     glEnableVertexAttribArray(0);
@@ -177,7 +188,8 @@ int main(int ArgC, char **Args)
 
         glClearColor(1,0,1,1);
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        // glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
 
         // GetOpenGLInfo();
 
