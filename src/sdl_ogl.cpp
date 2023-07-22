@@ -3,9 +3,10 @@
 #include "SDL_opengl.h"
 #include <stdio.h>
 #include <iostream>
-
+typedef unsigned int u32;
 
 #define global static
+
 
 global bool is_running = false;
 global int Width = 640;
@@ -13,6 +14,53 @@ global int Height = 480;
 
 SDL_Window *Window;
 SDL_GLContext Context;
+
+
+u32 CompileShader(u32 type, const std::string &source)
+{  
+    u32 id = glCreateShader(type);
+    const char *src = source.c_str();
+    glShaderSource(id, 1, &src, nullptr);
+    glCompileShader(id);
+
+    int result;
+    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+    if(result == GL_FALSE)
+    {
+        int length;
+        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
+        char *message = (char *)alloca(length*sizeof(char));
+        glGetShaderInfoLog(id, length, &length, message);
+        std::cout << message << std::endl;
+        glDeleteShader(id);
+        return(0);
+    }
+
+    return(id);
+}
+
+
+u32 CreateShader(const std::string &vertexShader, const std::string &fragmentShader)
+{
+    
+    u32 program = glCreateProgram();
+    u32 vs = CompileShader (GL_VERTEX_SHADER, vertexShader);
+    u32 fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
+
+    glAttachShader(program, vs);
+    glAttachShader(program, fs);
+
+    glLinkProgram(program);
+    glValidateProgram(program);
+
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+
+    return(program);
+}
+
+
+
 
 void GetOpenGLInfo()
 {
@@ -46,7 +94,6 @@ int main(int ArgC, char **Args)
         std::cout << "LoaderGLLLoader did not work" << std::endl;
     }
     
-    GetOpenGLInfo();
 
     if(Context == NULL)
     {
@@ -54,12 +101,87 @@ int main(int ArgC, char **Args)
         return(1);
     }
 
+    float positions[6] = 
+    {
+        -0.5f, -0.5f,
+         0.0f,  0.5f,
+         0.5f, -0.5f
+    }; 
+
+    /*
+    Modern OpenGL requires a VAO be defined and bound if you are using the core profile.
+    Add *code below* to your code,
+    otherwise you will draw nothing.
+    
+    */
+
+    unsigned int VAO;
+    glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
+
+    u32 BufferId;
+    glGenBuffers(1, &BufferId);
+    glBindBuffer(GL_ARRAY_BUFFER, BufferId);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(float), positions, GL_STATIC_DRAW);
+
+
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+
+
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    std::string vertexShader = 
+    "#version 330 core\n"
+    "\n"
+    "in vec4 position;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+        "gl_Position = position;\n"
+    "}\n";
+
+    std::string fragmentShader = 
+    "#version 330 core\n"
+    "\n"
+    "out vec4 color;\n"
+    "\n"
+    "void main()\n"
+    "{\n"
+    "color = vec4(1.0, 0.0, 0.0, 1.0);\n"
+    "}\n";
+
+    u32 shader = CreateShader(vertexShader, fragmentShader);
+    glUseProgram(shader);
+
+
+
+    // stride: bytes per vertex
+    // pointer: pointer into attribute
+
+
+
+
+
+    GetOpenGLInfo();
     while(is_running == true)
     {
         SDL_Event e;
         while(SDL_PollEvent(&e) != 0)
             if(e.type == SDL_QUIT) is_running = false;
 
+        glDisable(GL_DEPTH_TEST);
+        glDisable(GL_CULL_FACE);
+        glViewport(0,0,Width,Height);
+
+        glClearColor(1,0,1,1);
+        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
+        // GetOpenGLInfo();
+
+        SDL_GL_SwapWindow(Window);
 
     }
 
