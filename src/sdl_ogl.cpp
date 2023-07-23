@@ -101,7 +101,7 @@ int main(int ArgC, char **Args)
         return(1);
     }
 
-    float positions[8] = 
+    float positions[] = 
     {
         -0.5f, -0.5f,
          0.5f,  -0.5f,
@@ -111,20 +111,23 @@ int main(int ArgC, char **Args)
 
     u32 indices[] = {
         0, 1, 2,
+        // 2, 3, 0
+    };
+    u32 indices2[] = {
+        // 0, 1, 2,
         2, 3, 0
     };
 
     /*
-    Modern OpenGL requires a VAO be defined and bound if you are using the core profile.
-    Add *code below* to your code,
-    otherwise you will draw nothing.
+        Modern OpenGL requires a VAO be defined and bound if you are using the core profile.
+        Add *code below* to your code,
+        otherwise you will draw nothing.
     
     */
 
     u32 VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
-
     u32 BufferId;
     glGenBuffers(1, &BufferId);
     glBindBuffer(GL_ARRAY_BUFFER, BufferId);
@@ -133,12 +136,27 @@ int main(int ArgC, char **Args)
     u32 IBO;
     glGenBuffers(1, &IBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(u32), indices, GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(u32), indices, GL_STATIC_DRAW);
 
-
-    glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+    glEnableVertexAttribArray(0);
 
+    u32 VAO2;
+    glGenVertexArrays(1, &VAO2);
+    glBindVertexArray(VAO2);
+    glBindBuffer(GL_ARRAY_BUFFER, BufferId);
+
+    u32 IBO2;
+    glGenBuffers(1, &IBO2);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO2);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(u32), indices2, GL_STATIC_DRAW);
+
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+    glEnableVertexAttribArray(0);
+
+
+    
 
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -188,8 +206,13 @@ int main(int ArgC, char **Args)
 
         glClearColor(1,0,1,1);
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-        // glDrawArrays(GL_TRIANGLES, 0, 6);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
+        glBindVertexArray(VAO2);
+        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
+
 
         // GetOpenGLInfo();
 
