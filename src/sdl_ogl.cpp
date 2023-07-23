@@ -3,6 +3,9 @@
 #include "SDL_opengl.h"
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
 typedef unsigned int u32;
 
 #define global static
@@ -15,6 +18,52 @@ global int Height = 480;
 SDL_Window *Window;
 SDL_GLContext Context;
 
+struct ShaderProgramSource
+{
+    std::string VertexSource;
+    std::string FragmentSource;
+};
+
+ShaderProgramSource ParseShader(const std::string &filepath)
+{
+    ShaderProgramSource result;
+
+    std::ifstream stream(filepath);
+
+    enum ShaderType
+    {
+        NONE = -1, VERTEX = 0, FRAGMENT = 1
+    };
+
+    std::string line;
+    std::stringstream ss[2];
+
+    ShaderType type = ShaderType::NONE;
+
+    while(getline(stream, line))
+    {
+        if(line.find("#shader") != std::string::npos)
+        {
+            if(line.find("vertex") != std::string::npos)
+            {
+                type = ShaderType::VERTEX;
+            }
+            else
+            {
+                type = ShaderType::FRAGMENT;
+            }
+        }
+        else
+        {
+            ss[(int)type] << line << '\n';
+        }
+    }
+
+    result.VertexSource = ss[0].str();
+    result.FragmentSource = ss[1].str();
+
+    return(result);
+}
 
 u32 CompileShader(u32 type, const std::string &source)
 {  
@@ -44,7 +93,7 @@ u32 CreateShader(const std::string &vertexShader, const std::string &fragmentSha
 {
     
     u32 program = glCreateProgram();
-    u32 vs = CompileShader (GL_VERTEX_SHADER, vertexShader);
+    u32 vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
     u32 fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
 
     glAttachShader(program, vs);
@@ -89,6 +138,8 @@ int main(int ArgC, char **Args)
     Window = SDL_CreateWindow("OGL Window", 0, 0, Width, Height, SDL_WINDOW_OPENGL);
     Context = SDL_GL_CreateContext(Window);
 
+    SDL_GL_SetSwapInterval(0);
+
     if(!gladLoadGLLoader(SDL_GL_GetProcAddress)) 
     {
         std::cout << "LoaderGLLLoader did not work" << std::endl;
@@ -119,80 +170,52 @@ int main(int ArgC, char **Args)
     };
 
     /*
-        Modern OpenGL requires a VAO be defined and bound if you are using the core profile.
-        Add *code below* to your code,
-        otherwise you will draw nothing.
-    
+        Modern OpenGL requires a VAO be defined and bound if you are using the core profile.    
     */
 
-    u32 VAO;
-    glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
+    u32 VAO[2];
+    u32 IBO[2];
+    glGenBuffers(2, IBO);
+    glGenVertexArrays(2, VAO);
     u32 BufferId;
     glGenBuffers(1, &BufferId);
+
     glBindBuffer(GL_ARRAY_BUFFER, BufferId);
     glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), positions, GL_STATIC_DRAW);
 
-    u32 IBO;
-    glGenBuffers(1, &IBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(u32), indices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
-    glEnableVertexAttribArray(0);
-
-    u32 VAO2;
-    glGenVertexArrays(1, &VAO2);
-    glBindVertexArray(VAO2);
-    glBindBuffer(GL_ARRAY_BUFFER, BufferId);
-
-    u32 IBO2;
-    glGenBuffers(1, &IBO2);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO2);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(u32), indices2, GL_STATIC_DRAW);
-
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
-    glEnableVertexAttribArray(0);
-
-
     
-
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-
-    std::string vertexShader = 
-    "#version 330 core\n"
-    "\n"
-    "in vec4 position;\n"
-    "\n"
-    "void main()\n"
-    "{\n"
-        "gl_Position = position;\n"
-    "}\n";
-
-    std::string fragmentShader = 
-    "#version 330 core\n"
-    "\n"
-    "out vec4 color;\n"
-    "\n"
-    "void main()\n"
-    "{\n"
-    "color = vec4(1.0, 0.0, 0.0, 1.0);\n"
-    "}\n";
-
-    u32 shader = CreateShader(vertexShader, fragmentShader);
-    glUseProgram(shader);
-
-
+    glBindVertexArray(VAO[0]);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO[0]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(u32), indices, GL_STATIC_DRAW);
 
     // stride: bytes per vertex
     // pointer: pointer into attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(VAO[1]);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO[1]);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(u32), indices2, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+    glEnableVertexAttribArray(0);
 
 
+    ShaderProgramSource source = ParseShader("src/basic.shader");
+
+    u32 shader = CreateShader(source.VertexSource, source.FragmentSource);
+    glUseProgram(shader);
+
+    /*
+        once shader create (and mentions uniforms), it gets assigned an ID
+        -1 if not used or not found
+    */
+
+    int location = glGetUniformLocation(shader, "u_Color");
 
 
-
+    float r = 0.0f;
+    float increment = 0.05;
     GetOpenGLInfo();
     while(is_running == true)
     {
@@ -200,17 +223,29 @@ int main(int ArgC, char **Args)
         while(SDL_PollEvent(&e) != 0)
             if(e.type == SDL_QUIT) is_running = false;
 
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_CULL_FACE);
-        glViewport(0,0,Width,Height);
+        // glDisable(GL_DEPTH_TEST);
+        // glDisable(GL_CULL_FACE);
+        // glViewport(0,0,Width,Height);
 
-        glClearColor(1,0,1,1);
+        glClearColor(0,0,0,1);
+        glUniform4f(location, r, 0.3f, 0.8, 1.0f);
+
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-        glBindVertexArray(VAO);
+        glBindVertexArray(VAO[0]);
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
-        glBindVertexArray(VAO2);
+        glBindVertexArray(VAO[1]);
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+
+        if(r > 1.0f)
+        {
+            increment = -increment;
+        }
+        else if(r < 0.0f)
+        {
+            increment = -increment;
+        }
+        r+=increment;
 
 
 
