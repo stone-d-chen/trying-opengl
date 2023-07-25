@@ -8,6 +8,10 @@
 #include <string>
 typedef unsigned int u32;
 
+    #include "IndexBuffer.cpp"
+    #include "VertexBuffer.cpp"
+    #include "VertexArray.h"
+
 #define global static
 
 
@@ -138,12 +142,14 @@ int main(int ArgC, char **Args)
     Window = SDL_CreateWindow("OGL Window", 0, 0, Width, Height, SDL_WINDOW_OPENGL);
     Context = SDL_GL_CreateContext(Window);
 
-    SDL_GL_SetSwapInterval(0);
+     SDL_GL_SetSwapInterval(1);
 
     if(!gladLoadGLLoader(SDL_GL_GetProcAddress)) 
     {
         std::cout << "LoaderGLLLoader did not work" << std::endl;
     }
+
+
     
 
     if(Context == NULL)
@@ -173,32 +179,17 @@ int main(int ArgC, char **Args)
         Modern OpenGL requires a VAO be defined and bound if you are using the core profile.    
     */
 
-    u32 VAO[2];
-    u32 IBO[2];
-    glGenBuffers(2, IBO);
-    glGenVertexArrays(2, VAO);
-    u32 BufferId;
-    glGenBuffers(1, &BufferId);
 
-    glBindBuffer(GL_ARRAY_BUFFER, BufferId);
-    glBufferData(GL_ARRAY_BUFFER, 8 * sizeof(float), positions, GL_STATIC_DRAW);
+    VertexArray va;
+    VertexBuffer vb(positions, 8 * sizeof(float));
+    VertexBufferLayout layout;
+    layout.Push<float>(2);
+    va.AddBuffer(vb, layout);
+    IndexBuffer ib(indices, 3);
 
-    
-    glBindVertexArray(VAO[0]);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO[0]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(u32), indices, GL_STATIC_DRAW);
-
-    // stride: bytes per vertex
-    // pointer: pointer into attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
-    glEnableVertexAttribArray(0);
-
-    glBindVertexArray(VAO[1]);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IBO[1]);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 3 * sizeof(u32), indices2, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
-    glEnableVertexAttribArray(0);
+    VertexArray va2;
+    va2.AddBuffer(vb, layout);
+    IndexBuffer ib2(indices2, 3);
 
 
     ShaderProgramSource source = ParseShader("src/basic.shader");
@@ -223,18 +214,15 @@ int main(int ArgC, char **Args)
         while(SDL_PollEvent(&e) != 0)
             if(e.type == SDL_QUIT) is_running = false;
 
-        // glDisable(GL_DEPTH_TEST);
-        // glDisable(GL_CULL_FACE);
-        // glViewport(0,0,Width,Height);
 
         glClearColor(0,0,0,1);
         glUniform4f(location, r, 0.3f, 0.8, 1.0f);
 
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-        glBindVertexArray(VAO[0]);
+        va.Bind();
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
-        glBindVertexArray(VAO[1]);
+        va2.Bind();
         glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
         if(r > 1.0f)
