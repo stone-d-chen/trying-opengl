@@ -3,14 +3,14 @@
 #include "SDL_opengl.h"
 #include <stdio.h>
 #include <iostream>
-#include <fstream>
-#include <sstream>
+
 #include <string>
 typedef unsigned int u32;
 
     #include "IndexBuffer.cpp"
     #include "VertexBuffer.cpp"
     #include "VertexArray.h"
+    #include "Shader.h"
 
 #define global static
 
@@ -22,11 +22,11 @@ global int Height = 480;
 SDL_Window *Window;
 SDL_GLContext Context;
 
-struct ShaderProgramSource
-{
-    std::string VertexSource;
-    std::string FragmentSource;
-};
+// struct ShaderProgramSource
+// {
+//     std::string VertexSource;
+//     std::string FragmentSource;
+// };
 
 ShaderProgramSource ParseShader(const std::string &filepath)
 {
@@ -191,18 +191,8 @@ int main(int ArgC, char **Args)
     va2.AddBuffer(vb, layout);
     IndexBuffer ib2(indices2, 3);
 
-
-    ShaderProgramSource source = ParseShader("src/basic.shader");
-
-    u32 shader = CreateShader(source.VertexSource, source.FragmentSource);
-    glUseProgram(shader);
-
-    /*
-        once shader create (and mentions uniforms), it gets assigned an ID
-        -1 if not used or not found
-    */
-
-    int location = glGetUniformLocation(shader, "u_Color");
+    Shader myshader("src/basic.shader");
+    myshader.SetUniform4f("u_Color", 1.0f, 0.5f, 0.2f, 1.0f);
 
 
     float r = 0.0f;
@@ -216,7 +206,7 @@ int main(int ArgC, char **Args)
 
 
         glClearColor(0,0,0,1);
-        glUniform4f(location, r, 0.3f, 0.8, 1.0f);
+        myshader.SetUniform4f("u_Color", r, 0.5, 0.2, 1.0);
 
         glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
         va.Bind();
