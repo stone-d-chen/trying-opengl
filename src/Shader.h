@@ -4,6 +4,7 @@
 #include <sstream>
 #include <iostream>
 #include "glad/glad.h"
+#include <unordered_map>
 
 struct ShaderProgramSource
 {
@@ -19,14 +20,18 @@ class Shader
         void Bind();
         void Unbind();
 
+        void SetUniform1i(const std::string &name, int value);
+        void SetUniform1f(const std::string &name, float value);
         void SetUniform4f(const std::string &name, float v0, float v1, float v2, float v3);
     private:
         ShaderProgramSource ParseShader(const std::string &filepath);
         unsigned int CompileShader(unsigned int type, const std::string &source);
         unsigned int CreateShader(const std::string &vertexShader, const std::string &fragmentShader);
+        int Shader::GetUniformLocation(const std::string &name);
     private:
         std::string m_FilePath;
         unsigned int m_RendererID;
+        std::unordered_map<std::string, int> m_UniformLocationCache;
 
 };
 
@@ -60,8 +65,6 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string &source)
 
     return(id);
 }
-
-
 
 ShaderProgramSource Shader::ParseShader(const std::string &filepath)
 {
@@ -126,9 +129,26 @@ void Shader::Bind()
     glUseProgram(m_RendererID);
 }
 
+int Shader::GetUniformLocation(const std::string &name)
+{
+    if(m_UniformLocationCache.find(name) != m_UniformLocationCache.end())
+    {
+        return(m_UniformLocationCache[name]);
+    }
+    return(glGetUniformLocation(m_RendererID, name.c_str()));
+}
+
+
 void Shader::SetUniform4f(const std::string &name, float v0, float v1, float v2, float v3)
 {
-    int location = glGetUniformLocation(m_RendererID, name.c_str());
-    // std::cout << "location is " << location << std::endl;
-    glUniform4f(location, v0, v1, v2, v3);
+    glUniform4f(GetUniformLocation(name), v0, v1, v2, v3);
+}
+
+void Shader::SetUniform1i(const std::string &name, int value)
+{
+    glUniform1i(GetUniformLocation(name), value);
+}
+void Shader::SetUniform1f(const std::string &name, float value)
+{
+    glUniform1f(GetUniformLocation(name), value);
 }

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <iostream>
 
+
 #include <string>
 typedef unsigned int u32;
 
@@ -11,6 +12,8 @@ typedef unsigned int u32;
     #include "VertexBuffer.cpp"
     #include "VertexArray.h"
     #include "Shader.h"
+    #include "Renderer.h"
+    #include "Texture.h"
 
 #define global static
 
@@ -21,98 +24,6 @@ global int Height = 480;
 
 SDL_Window *Window;
 SDL_GLContext Context;
-
-// struct ShaderProgramSource
-// {
-//     std::string VertexSource;
-//     std::string FragmentSource;
-// };
-
-ShaderProgramSource ParseShader(const std::string &filepath)
-{
-    ShaderProgramSource result;
-
-    std::ifstream stream(filepath);
-
-    enum ShaderType
-    {
-        NONE = -1, VERTEX = 0, FRAGMENT = 1
-    };
-
-    std::string line;
-    std::stringstream ss[2];
-
-    ShaderType type = ShaderType::NONE;
-
-    while(getline(stream, line))
-    {
-        if(line.find("#shader") != std::string::npos)
-        {
-            if(line.find("vertex") != std::string::npos)
-            {
-                type = ShaderType::VERTEX;
-            }
-            else
-            {
-                type = ShaderType::FRAGMENT;
-            }
-        }
-        else
-        {
-            ss[(int)type] << line << '\n';
-        }
-    }
-
-    result.VertexSource = ss[0].str();
-    result.FragmentSource = ss[1].str();
-
-    return(result);
-}
-
-u32 CompileShader(u32 type, const std::string &source)
-{  
-    u32 id = glCreateShader(type);
-    const char *src = source.c_str();
-    glShaderSource(id, 1, &src, nullptr);
-    glCompileShader(id);
-
-    int result;
-    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
-    if(result == GL_FALSE)
-    {
-        int length;
-        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
-        char *message = (char *)alloca(length*sizeof(char));
-        glGetShaderInfoLog(id, length, &length, message);
-        std::cout << message << std::endl;
-        glDeleteShader(id);
-        return(0);
-    }
-
-    return(id);
-}
-
-
-u32 CreateShader(const std::string &vertexShader, const std::string &fragmentShader)
-{
-    
-    u32 program = glCreateProgram();
-    u32 vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-    u32 fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
-
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-
-    glLinkProgram(program);
-    glValidateProgram(program);
-
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-
-    return(program);
-}
-
-
 
 
 void GetOpenGLInfo()
@@ -125,12 +36,7 @@ void GetOpenGLInfo()
 
 int main(int ArgC, char **Args)
 {
-    printf("start\n");
-    if(SDL_Init(SDL_INIT_VIDEO) == 0)
-    {
-        is_running = true;
-        printf("running");
-    }
+    if(SDL_Init(SDL_INIT_VIDEO) == 0) { is_running = true; }
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
@@ -144,34 +50,28 @@ int main(int ArgC, char **Args)
 
      SDL_GL_SetSwapInterval(1);
 
-    if(!gladLoadGLLoader(SDL_GL_GetProcAddress)) 
-    {
-        std::cout << "LoaderGLLLoader did not work" << std::endl;
-    }
-
-
-    
+    if(!gladLoadGLLoader(SDL_GL_GetProcAddress)) { std::cout << "LoaderGLLLoader did not work" << std::endl; }
 
     if(Context == NULL)
     {
         std::cout << "Context problem" << std::endl;
         return(1);
     }
+  
+
 
     float positions[] = 
     {
-        -0.5f, -0.5f,
-         0.5f,  -0.5f,
-         0.5f, 0.5f,
-        -0.5f, 0.5f,
+        -0.5f, -0.5f, 0.0f, 0.0f,
+         0.5f, -0.5f, 1.0f, 0.0f, 
+         0.5f,  0.5f, 1.0f, 1.0f,
+        -0.5f,  0.5f, 0.0f, 1.0f
     }; 
 
     u32 indices[] = {
         0, 1, 2,
-        // 2, 3, 0
     };
     u32 indices2[] = {
-        // 0, 1, 2,
         2, 3, 0
     };
 
@@ -181,11 +81,13 @@ int main(int ArgC, char **Args)
 
 
     VertexArray va;
-    VertexBuffer vb(positions, 8 * sizeof(float));
+    VertexBuffer vb(positions, 4 * 4 * sizeof(float));
     VertexBufferLayout layout;
+    layout.Push<float>(2);
     layout.Push<float>(2);
     va.AddBuffer(vb, layout);
     IndexBuffer ib(indices, 3);
+
 
     VertexArray va2;
     va2.AddBuffer(vb, layout);
@@ -193,27 +95,26 @@ int main(int ArgC, char **Args)
 
     Shader myshader("src/basic.shader");
     myshader.SetUniform4f("u_Color", 1.0f, 0.5f, 0.2f, 1.0f);
+    Texture texture("src/wall.jpg");
+    texture.Bind();
+    myshader.SetUniform1i("u_Texture", 0);
 
+    Renderer renderer;
 
     float r = 0.0f;
     float increment = 0.05;
+
     GetOpenGLInfo();
+
     while(is_running == true)
     {
-        SDL_Event e;
-        while(SDL_PollEvent(&e) != 0)
-            if(e.type == SDL_QUIT) is_running = false;
+        // myshader.SetUniform4f("u_Color", r, 0.5, 0.2, 1.0);
 
+        renderer.Draw(va, ib, myshader);
+        renderer.Draw(va2, ib2, myshader);
 
-        glClearColor(0,0,0,1);
-        myshader.SetUniform4f("u_Color", r, 0.5, 0.2, 1.0);
+        SDL_GL_SwapWindow(Window);
 
-        glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-        va.Bind();
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
-
-        va2.Bind();
-        glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
 
         if(r > 1.0f)
         {
@@ -225,14 +126,11 @@ int main(int ArgC, char **Args)
         }
         r+=increment;
 
-
-
-        // GetOpenGLInfo();
-
-        SDL_GL_SwapWindow(Window);
+        SDL_Event e;
+        while(SDL_PollEvent(&e) != 0)
+            if(e.type == SDL_QUIT) is_running = false;
 
     }
-
 
     return(0);
 }
