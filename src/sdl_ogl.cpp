@@ -5,6 +5,11 @@
 #include <iostream>
 
 
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+
+
+
 #include <string>
 typedef unsigned int u32;
 
@@ -75,9 +80,12 @@ int main(int ArgC, char **Args)
         2, 3, 0
     };
 
-    /*
-        Modern OpenGL requires a VAO be defined and bound if you are using the core profile.    
-    */
+    
+    //    Modern OpenGL requires a VAO be defined and bound if you are using the core profile.    
+    
+
+   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+   glEnable(GL_BLEND);
 
 
     VertexArray va;
@@ -93,9 +101,13 @@ int main(int ArgC, char **Args)
     va2.AddBuffer(vb, layout);
     IndexBuffer ib2(indices2, 3);
 
+    glm::mat4 proj = glm::ortho(-2.0f, 2.0f, -1.5f, 1.5f, -1.0f, 1.0f);
+
     Shader myshader("src/basic.shader");
     myshader.SetUniform4f("u_Color", 1.0f, 0.5f, 0.2f, 1.0f);
-    Texture texture("src/wall.jpg");
+    myshader.SetUniformMatrix4fv("u_MVP", proj);
+
+    Texture texture("src/dice.png");
     texture.Bind();
     myshader.SetUniform1i("u_Texture", 0);
 
@@ -108,7 +120,7 @@ int main(int ArgC, char **Args)
 
     while(is_running == true)
     {
-        // myshader.SetUniform4f("u_Color", r, 0.5, 0.2, 1.0);
+        myshader.SetUniform4f("u_Color", r, 0.5, 0.2, 1.0);
 
         renderer.Draw(va, ib, myshader);
         renderer.Draw(va2, ib2, myshader);

@@ -23,6 +23,9 @@ class Shader
         void SetUniform1i(const std::string &name, int value);
         void SetUniform1f(const std::string &name, float value);
         void SetUniform4f(const std::string &name, float v0, float v1, float v2, float v3);
+
+        void SetUniformMatrix4fv(const std::string &name, glm::mat4 &matrix);
+
     private:
         ShaderProgramSource ParseShader(const std::string &filepath);
         unsigned int CompileShader(unsigned int type, const std::string &source);
@@ -65,6 +68,7 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string &source)
 
     return(id);
 }
+
 
 ShaderProgramSource Shader::ParseShader(const std::string &filepath)
 {
@@ -151,4 +155,9 @@ void Shader::SetUniform1i(const std::string &name, int value)
 void Shader::SetUniform1f(const std::string &name, float value)
 {
     glUniform1f(GetUniformLocation(name), value);
+}
+
+void Shader::SetUniformMatrix4fv(const std::string &name, glm::mat4 &matrix)
+{
+    glUniformMatrix4fv(GetUniformLocation(name), 1, GL_FALSE, &matrix[0][0]);
 }
